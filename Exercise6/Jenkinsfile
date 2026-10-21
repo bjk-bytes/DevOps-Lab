@@ -1,0 +1,85 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Check delivery metrics endpoint') {
+            steps {
+                sh '''
+                set -e
+                curl -sSf http://host.docker.internal:8000/metrics > /tmp/metrics.out
+                echo "metrics endpoint OK, $(wc -l < /tmp/metrics.out) lines"
+                grep -E '^(pending_deliveries|on_the_way_deliveries|total_deliveries|average_delivery_time_sum|average_delivery_time_count) ' /tmp/metrics.out
+                '''
+            }
+        }
+        stage('Check Prometheus is up and scraping') {
+            steps {
+                sh '''
+                set -e
+                curl -sSf http://host.docker.internal:9090/-/healthy >/dev/null
+                echo "prometheus /-/healthy OK"
+                # Both targets should be up
+                curl -s "http://host.docker.internal:9090/api/v1/targets" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+for t in d['data']['activeTargets']:
+    print(t['labels']['job'], t['health'])
+    assert t['health'] == 'up', f\\"{t['labels']['job']} not up\\"
+print('all targets up')
+"
+                '''
+            }
+        }
+        stage('Check Grafana is up') {
+            steps {
+                sh '''
+                set -e
+                curl -sSf http://host.docker.internal:3000/api/health >/dev/null
+                echo "grafana /api/health OK"
+                '''
+            }
+        }
+        stage('Verify alert rules loaded in Prometheus') {
+            steps {
+                sh '''
+                set -e
+                curl -s "http://host.docker.internal:9090/api/v1/rules" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+rules = []
+for g in d['data']['groups']:
+    for r in g['rules']:
+        rules.append((r['name'], r.get('state','n/a')))
+for n, s in rules:
+    print(f'{n}: {s}')
+assert any(n == 'HighPendingDeliveries' for n, _ in rules), 'HighPendingDeliveries missing'
+assert any(n == 'HighAverageDeliveryTime' for n, _ in rules), 'HighAverageDeliveryTime missing'
+print('both alert rules present')
+"
+                '''
+            }
+        }
+        stage('Sample a metric via Prometheus query API') {
+            steps {
+                sh '''
+                set -e
+                curl -s "http://host.docker.internal:9090/api/v1/query?query=pending_deliveries" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+val = d['data']['result'][0]['value'][1]
+print(f'pending_deliveries = {val}')
+"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Monitoring stack healthy.'
+        }
+        failure {
+            echo 'Monitoring stack has issues.'
+        }
+    }
+}

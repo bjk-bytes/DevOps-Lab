@@ -1,0 +1,44 @@
+{
+  "dashboard": {
+    "uid": "delivery-monitoring",
+    "title": "ZAPPTTO Delivery Monitoring",
+    "refresh": "5s",
+    "time": {"from": "now-5m", "to": "now"},
+    "schemaVersion": 36,
+    "panels": [
+      {"id": 1, "type": "stat", "title": "Total Deliveries",
+       "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+       "datasource": {"type":"prometheus","uid":"eg1tthny0s83kc"},
+       "targets": [{"expr": "total_deliveries", "refId": "A"}],
+       "options": {"textMode":"auto","colorMode":"background","graphMode":"area","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}}},
+      {"id": 2, "type": "stat", "title": "Pending Deliveries",
+       "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+       "datasource": {"type":"prometheus","uid":"eg1tthny0s83kc"},
+       "targets": [{"expr": "pending_deliveries", "refId": "A"}],
+       "options": {"textMode":"auto","colorMode":"background","graphMode":"area","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},
+       "fieldConfig": {"defaults": {"thresholds": {"mode":"absolute","steps":[{"color":"green","value":null},{"color":"orange","value":10},{"color":"red","value":50}]}, "color":{"mode":"thresholds"}}}},
+      {"id": 3, "type": "stat", "title": "On-the-Way Deliveries",
+       "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
+       "datasource": {"type":"prometheus","uid":"eg1tthny0s83kc"},
+       "targets": [{"expr": "on_the_way_deliveries", "refId": "A"}],
+       "options": {"textMode":"auto","colorMode":"background","graphMode":"area","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}}},
+      {"id": 4, "type": "stat", "title": "Avg Delivery Time (s)",
+       "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0},
+       "datasource": {"type":"prometheus","uid":"eg1tthny0s83kc"},
+       "targets": [{"expr": "average_delivery_time_sum / average_delivery_time_count", "refId": "A"}],
+       "options": {"textMode":"auto","colorMode":"background","graphMode":"area","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},
+       "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"mode":"absolute","steps":[{"color":"green","value":null},{"color":"orange","value":30},{"color":"red","value":45}]}, "color":{"mode":"thresholds"}}}},
+      {"id": 5, "type": "timeseries", "title": "Deliveries over time",
+       "gridPos": {"h": 10, "w": 24, "x": 0, "y": 6},
+       "datasource": {"type":"prometheus","uid":"eg1tthny0s83kc"},
+       "targets": [
+         {"expr": "pending_deliveries", "legendFormat": "Pending", "refId": "A"},
+         {"expr": "on_the_way_deliveries", "legendFormat": "On the way", "refId": "B"},
+         {"expr": "total_deliveries", "legendFormat": "Total", "refId": "C"}
+       ],
+       "options": {"legend":{"displayMode":"list","placement":"bottom","showLegend":true},"tooltip":{"mode":"multi","sort":"none"}},
+       "fieldConfig": {"defaults": {"custom": {"drawStyle":"line","lineWidth":2,"fillOpacity":10,"showPoints":"never","spanNulls":true}}}}
+    ]
+  },
+  "overwrite": true
+}
